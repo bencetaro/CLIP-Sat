@@ -1,0 +1,8 @@
+run_name: ft-top-focal
+loss_fn: focal
+layers: top
+optim: adam
+lr: 0.0001
+epochs: 6
+bs: 32
+gpu: true

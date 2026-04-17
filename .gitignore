@@ -1,2 +1,9 @@
 output/
-.env
+__pycache__/
+*.pyc
+*.env
+*.log
+*.ipynb_checkpoints
+wandb/*
+*/wandb/*
+*wandb
