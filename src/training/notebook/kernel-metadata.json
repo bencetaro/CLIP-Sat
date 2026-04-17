@@ -1,0 +1,14 @@
+{
+  "id": "bencetar/training-notebook-clip",
+  "title": "CLIP Sat Training Notebook",
+  "code_file": "training-notebook-clip.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "enable_gpu": true,
+  "enable_internet": true,
+  "is_private": true,
+  "dataset_sources": [
+    "bencetar/clip-sat-data",
+    "ankit1743/skyview-an-aerial-landscape-dataset"
+  ]
+}

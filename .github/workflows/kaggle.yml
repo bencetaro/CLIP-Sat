@@ -1,0 +1,80 @@
+name: Kaggle CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+      - feature/**
+    paths:
+      - src/training/dataset/**
+      - src/training/notebook/**
+
+jobs:
+  kaggle-sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install Dependencies
+        run: pip install kaggle pyyaml wandb
+
+      - name: Configure Kaggle credentials
+        run: |
+          mkdir -p ~/.kaggle
+          echo "{\"username\":\"${{ secrets.KAGGLE_USERNAME }}\",\"key\":\"${{ secrets.KAGGLE_KEY }}\"}" > ~/.kaggle/kaggle.json
+          chmod 600 ~/.kaggle/kaggle.json
+
+      - name: Check dataset changes
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            dataset:
+              - src/training/dataset/**
+            notebook:
+              - src/training/notebook/**
+
+      - name: Push dataset
+        if: steps.filter.outputs.dataset == 'true'
+        run: |
+          kaggle datasets version \
+            -p src/training/dataset \
+            -m "Auto update $GITHUB_SHA" \
+            --dir-mode zip || \
+          kaggle datasets create -p src/training/dataset
+
+      - name: Push notebook
+        if: steps.filter.outputs.notebook == 'true'
+        run: |
+          kaggle kernels push -p src/training/notebook
+
+      - name: Wait for notebook completion
+        if: steps.filter.outputs.notebook == 'true'
+        run: |
+          for i in {1..20}; do
+            status=$(kaggle kernels status ${{ secrets.KAGGLE_USERNAME }}/satellite-imagery-training | grep "status")
+            echo $status
+            echo $status | grep -q "complete" && break
+            sleep 10
+          done
+
+      - name: Download Kaggle outputs
+        if: steps.filter.outputs.notebook == 'true'
+        run: |
+          mkdir -p output
+          kaggle kernels output ${{ secrets.KAGGLE_USERNAME }}/satellite-imagery-training -p output
+
+      - name: Sync with W&B
+        if: steps.filter.outputs.notebook == 'true'
+        run: |
+          wandb sync output/wandb_export --sync-all
+        env:
+          WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
