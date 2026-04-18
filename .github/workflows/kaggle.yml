@@ -60,7 +60,7 @@ jobs:
         if: steps.filter.outputs.notebook == 'true'
         run: |
           for i in {1..20}; do
-            status=$(kaggle kernels status ${{ secrets.KAGGLE_USERNAME }}/training-notebook-clip | grep "status")
+            status=$(kaggle kernels status ${{ secrets.KAGGLE_USERNAME }}/satellite-imagery-training | grep "status")
             echo $status
             echo $status | grep -q "complete" && break
             sleep 10
@@ -70,7 +70,7 @@ jobs:
         if: steps.filter.outputs.notebook == 'true'
         run: |
           mkdir -p output
-          kaggle kernels output ${{ secrets.KAGGLE_USERNAME }}/training-notebook-clip -p output
+          kaggle kernels output ${{ secrets.KAGGLE_USERNAME }}/satellite-imagery-training -p output
 
       - name: Sync with W&B
         if: steps.filter.outputs.notebook == 'true'

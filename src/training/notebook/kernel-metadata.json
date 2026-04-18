@@ -1,7 +1,7 @@
 {
-  "id": "bencetar/training-notebook-clip",
-  "title": "CLIP Sat Training Notebook",
-  "code_file": "training-notebook-clip.ipynb",
+  "id": "bencetar/satellite-imagery-training",
+  "title": "CLIP-Sat Training Notebook",
+  "code_file": "satellite-imagery-training.ipynb",
   "language": "python",
   "kernel_type": "notebook",
   "enable_gpu": true,
