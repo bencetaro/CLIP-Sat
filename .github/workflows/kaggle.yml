@@ -5,7 +5,7 @@ on:
   push:
     branches:
       - master
-      - wnb-**
+      - feature/**
     paths:
       - src/training/dataset/**
       - src/training/notebook/**
