@@ -52,29 +52,38 @@ jobs:
           kaggle datasets create -p src/training/dataset
 
       - name: Push notebook
-        if: steps.filter.outputs.notebook == 'true'
+        if: steps.filter.outputs.notebook == 'true' || steps.filter.outputs.dataset == 'true'
         run: |
           kaggle kernels push -p src/training/notebook
 
       - name: Wait for notebook completion
-        if: steps.filter.outputs.notebook == 'true'
+        if: steps.filter.outputs.notebook == 'true' || steps.filter.outputs.dataset == 'true'
         run: |
-          for i in {1..20}; do
-            status=$(kaggle kernels status ${{ secrets.KAGGLE_USERNAME }}/satellite-imagery-training | grep "status")
-            echo $status
-            echo $status | grep -q "complete" && break
-            sleep 10
+          for i in {1..100}; do
+            status=$(kaggle kernels status ${{ secrets.KAGGLE_USERNAME }}/satellite-imagery-training)
+            echo "$status"
+            echo "$status" | grep -q "COMPLETE" && break
+            echo "$status" | grep -q "ERROR" && exit 1
+            sleep 30
           done
 
       - name: Download Kaggle outputs
-        if: steps.filter.outputs.notebook == 'true'
+        if: steps.filter.outputs.notebook == 'true' || steps.filter.outputs.dataset == 'true'
         run: |
           mkdir -p output
           kaggle kernels output ${{ secrets.KAGGLE_USERNAME }}/satellite-imagery-training -p output
 
       - name: Sync with W&B
-        if: steps.filter.outputs.notebook == 'true'
+        if: steps.filter.outputs.notebook == 'true' || steps.filter.outputs.dataset == 'true'
         run: |
-          wandb sync output/wandb_export --sync-all
+          mkdir -p "${WANDB_DIR}" "${WANDB_CACHE_DIR}" "${WANDB_DATA_DIR}" "${WANDB_CONFIG_DIR}" "${WANDB_ARTIFACT_DIR}"
+          wandb login --relogin "${WANDB_API_KEY}"
+          python .github/scripts/sync_kaggle_wandb.py --output-dir output          
         env:
           WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
+          WANDB_ENTITY: ${{ secrets.WANDB_ENTITY }}
+          WANDB_DIR: ${{ github.workspace }}/.wandb
+          WANDB_CACHE_DIR: ${{ github.workspace }}/.wandb/cache
+          WANDB_DATA_DIR: ${{ github.workspace }}/.wandb/data
+          WANDB_CONFIG_DIR: ${{ github.workspace }}/.wandb/config
+          WANDB_ARTIFACT_DIR: ${{ github.workspace }}/.wandb/artifacts
