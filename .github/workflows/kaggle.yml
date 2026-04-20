@@ -5,7 +5,7 @@ on:
   push:
     branches:
       - master
-      - feature/**
+      - wnb-**
     paths:
       - src/training/dataset/**
       - src/training/notebook/**
@@ -59,25 +59,13 @@ jobs:
       - name: Wait for notebook completion
         if: steps.filter.outputs.notebook == 'true' || steps.filter.outputs.dataset == 'true'
         run: |
-          completed=false
           for i in {1..100}; do
-            status=$(kaggle kernels status ${{ secrets.KAGGLE_USERNAME }}/satellite-imagery-training | grep "status")
-            echo $status
-            if echo "$status" | grep -q "KernelWorkerStatus.COMPLETE"; then
-              completed=true
-              break
-            fi
-            if echo "$status" | grep -q "KernelWorkerStatus.ERROR"; then
-              echo "Kaggle notebook run failed"
-              exit 1
-            fi
+            status=$(kaggle kernels status ${{ secrets.KAGGLE_USERNAME }}/satellite-imagery-training)
+            echo "$status"
+            echo "$status" | grep -q "COMPLETE" && break
+            echo "$status" | grep -q "ERROR" && exit 1
             sleep 30
           done
-
-          if [ "$completed" != "true" ]; then
-            echo "Timed out waiting for Kaggle notebook completion"
-            exit 1
-          fi
 
       - name: Download Kaggle outputs
         if: steps.filter.outputs.notebook == 'true' || steps.filter.outputs.dataset == 'true'
@@ -88,27 +76,14 @@ jobs:
       - name: Sync with W&B
         if: steps.filter.outputs.notebook == 'true' || steps.filter.outputs.dataset == 'true'
         run: |
+          mkdir -p "${WANDB_DIR}" "${WANDB_CACHE_DIR}" "${WANDB_DATA_DIR}" "${WANDB_CONFIG_DIR}" "${WANDB_ARTIFACT_DIR}"
           wandb login --relogin "${WANDB_API_KEY}"
-          unzip -o output/wandb_run.zip -d output/
-          
-          echo "Discovered W&B offline runs:"
-          find output/wandb -maxdepth 3 \( -type d -name 'offline-run-*' -o -type f -name 'run-*.wandb' \) | sort
-
-          mapfile -t run_files < <(find output/wandb -type f -name 'run-*.wandb' | sort)
-          if [ ${#run_files[@]} -eq 0 ]; then
-            echo "No offline W&B run files found under output/wandb"
-            exit 1
-          fi
-
-          sync_args=(--include-offline)
-          if [ -n "${WANDB_ENTITY:-}" ]; then
-            sync_args+=(--entity "${WANDB_ENTITY}")
-          fi
-
-          for run_file in "${run_files[@]}"; do
-            echo "Syncing ${run_file}"
-            wandb sync "${run_file}" "${sync_args[@]}"
-          done
+          python .github/scripts/sync_kaggle_wandb.py --output-dir output          
         env:
           WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
           WANDB_ENTITY: ${{ secrets.WANDB_ENTITY }}
+          WANDB_DIR: ${{ github.workspace }}/.wandb
+          WANDB_CACHE_DIR: ${{ github.workspace }}/.wandb/cache
+          WANDB_DATA_DIR: ${{ github.workspace }}/.wandb/data
+          WANDB_CONFIG_DIR: ${{ github.workspace }}/.wandb/config
+          WANDB_ARTIFACT_DIR: ${{ github.workspace }}/.wandb/artifacts
