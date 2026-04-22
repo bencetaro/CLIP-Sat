@@ -12,4 +12,6 @@ CLIP is a very well-trained and informative model that effectively classifies co
 https://www.kaggle.com/code/bencetar/clip-hard-example-mining-finetuning
 
 
+**Note:** Kaggle CI runs do not guarantee a specific GPU type and may fall back to P100 or CPU. The default pytorch version is incompatible with P100, and installing a compatible version would require a runtime restart, which is not supported in CI. That is why I ended up using CPU during training.
+
 **NOTE:** This is a work in progress, so bugs and errors are very much expected.
