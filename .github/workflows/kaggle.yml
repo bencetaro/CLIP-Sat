@@ -76,14 +76,14 @@ jobs:
       - name: Sync with W&B
         if: steps.filter.outputs.notebook == 'true' || steps.filter.outputs.dataset == 'true'
         run: |
-          mkdir -p "${WANDB_DIR}" "${WANDB_CACHE_DIR}" "${WANDB_DATA_DIR}" "${WANDB_CONFIG_DIR}" "${WANDB_ARTIFACT_DIR}"
+          mkdir -p "${WANDB_DIR}" "${WANDB_CACHE_DIR}" "${WANDB_DATA_DIR}" "${WANDB_CONFIG_DIR}"
           wandb login --relogin "${WANDB_API_KEY}"
-          python .github/scripts/sync_kaggle_wandb.py --output-dir output          
+          python .github/scripts/sync_kaggle_wandb.py --output-dir output --project "${WANDB_PROJECT}"
         env:
           WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
           WANDB_ENTITY: ${{ secrets.WANDB_ENTITY }}
+          WANDB_PROJECT: ${{ secrets.WANDB_PROJECT || 'CLIP-Sat' }}
           WANDB_DIR: ${{ github.workspace }}/.wandb
           WANDB_CACHE_DIR: ${{ github.workspace }}/.wandb/cache
           WANDB_DATA_DIR: ${{ github.workspace }}/.wandb/data
           WANDB_CONFIG_DIR: ${{ github.workspace }}/.wandb/config
-          WANDB_ARTIFACT_DIR: ${{ github.workspace }}/.wandb/artifacts
