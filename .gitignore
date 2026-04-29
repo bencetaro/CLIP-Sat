@@ -1,9 +1,9 @@
 media/
+tmp/
 artifacts/
 postgres_data/
 minio_data/
 output/
-.streamlit/
 __pycache__/
 *.pyc
 *.env

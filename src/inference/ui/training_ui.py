@@ -60,20 +60,21 @@ def show_training_ui():
         st.warning("No runs returned by the API. Check `WANDB_ENTITY`/`WANDB_PROJECT` in the backend.")
         return
 
-    run_ids = [r["id"] for r in runs]
+    run_names = [r["name"] for r in runs]
 
     st.markdown("#### Select run ")
     selected_run = st.selectbox(
         "",
-        run_ids,
-        index=(run_ids.index(default_run) if default_run in run_ids else 0),
+        run_names,
+        index=(run_names.index(default_run) if default_run in run_names else 0),
         width=500,
     )
+    chosen_id = next((r["id"] for r in runs if r["name"] == selected_run), None)
 
     col1, col2, col3 = st.columns([2, 3, 10])
     with col1:
         if st.button("Sync model artifact"): # (warm cache)
-            r = requests.post(f"{api_base_url}/wandb/sync_model", params={"run_id": selected_run}, timeout=120)
+            r = requests.post(f"{api_base_url}/wandb/sync_model", params={"run_id": chosen_id}, timeout=120)
             if r.status_code == 200:
                 st.success("Synced model artifact")
                 st.json(r.json())
@@ -87,7 +88,7 @@ def show_training_ui():
 
     # Training summary
     st.header("Training Summary")
-    meta = requests.get(f"{api_base_url}/wandb/metadata", params={"run_id": selected_run}, timeout=30).json()
+    meta = requests.get(f"{api_base_url}/wandb/metadata", params={"run_id": chosen_id}, timeout=30).json()
     col1, col2 = st.columns([2, 2])
     with col1:
         with st.container(border=True):
@@ -106,7 +107,7 @@ def show_training_ui():
     with col2:
         with st.container(border=True):
             st.write("Logged artifacts")
-            artifacts = requests.get(f"{api_base_url}/wandb/artifacts", params={"run_id": selected_run}, timeout=30).json()
+            artifacts = requests.get(f"{api_base_url}/wandb/artifacts", params={"run_id": chosen_id}, timeout=30).json()
             art_df = pd.DataFrame(artifacts.get("artifacts", []))
             if art_df.empty:
                 st.info("No artifacts found for this run.")
@@ -116,7 +117,7 @@ def show_training_ui():
     # Show loss plot
     with st.container(border=True):
         st.subheader("Training curves")
-        history = requests.get(f"{api_base_url}/wandb/history", params={"run_id": selected_run}, timeout=30).json()
+        history = requests.get(f"{api_base_url}/wandb/history", params={"run_id": chosen_id}, timeout=30).json()
         df = pd.DataFrame(history)
         if df.empty:
             st.warning("No history returned (missing keys or empty run history).")
@@ -134,7 +135,7 @@ def show_training_ui():
     st.header("Evaluation On Test Set")
 
     # Classification report
-    resp = requests.get(f"{api_base_url}/wandb/clf_report", params={"run_id": selected_run}, timeout=30).json()
+    resp = requests.get(f"{api_base_url}/wandb/clf_report", params={"run_id": chosen_id}, timeout=30).json()
     html = resp.get("html")
     if not html:
         st.warning("Classification report not found for this run.")
@@ -164,7 +165,7 @@ def show_training_ui():
         with st.container(border=True):
             st.write("Confusion matrix")
             try:
-                cm = requests.get(f"{api_base_url}/wandb/confusion_matrix", params={"run_id": selected_run}, timeout=30).json()
+                cm = requests.get(f"{api_base_url}/wandb/confusion_matrix", params={"run_id": chosen_id}, timeout=30).json()
                 if cm.get("image_base64"):
                     st.image(_decode_b64(cm["image_base64"]), width=600)
                 else:
@@ -184,3 +185,10 @@ def show_training_ui():
         fig = px.bar(plot_df, x="class_name", y=metric)
         fig.update_layout(xaxis_title="Class", yaxis_title=metric)
         st.plotly_chart(fig, use_container_width=True)
+
+    st.divider()
+    st.caption(
+    """
+    **Photo by [SpaceX](https://images.unsplash.com/photo-1460186136353-977e9d6085a1?q=80&w=2340&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D) on [Unsplash](https://unsplash.com).**
+    """
+    )

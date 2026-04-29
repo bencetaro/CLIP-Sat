@@ -7,14 +7,24 @@ load_dotenv()
 from src.inference.ui.home_ui import show_home_ui
 from src.inference.ui.inference_ui import show_inference_ui
 from src.inference.ui.training_ui import show_training_ui
+from src.inference.ui.style import apply_global_style
 
 st.set_page_config(page_title="CLIP-Sat UI", layout="wide")
 
 API_BASE_URL = os.getenv("INFERENCE_API_BASE_URL", "http://localhost:8000")
 
+apply_global_style(
+    main_bg_image="src/inference/background/spacex.jpg",
+    sidebar_bg_image="src/inference/background/starry.png",
+)
+
 st.sidebar.title("Navigation")
 
-page = st.sidebar.radio("Go to", ["Home", "Inference", "Training"])
+nav_options = ["Home", "Inference", "Training"]
+if hasattr(st.sidebar, "segmented_control"):
+    page = st.sidebar.segmented_control("Go to", nav_options, default="Home")
+else:
+    page = st.sidebar.radio("Go to", nav_options)
 
 def track(page_name):
     try:

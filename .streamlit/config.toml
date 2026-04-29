@@ -1,0 +1,27 @@
+[theme]
+base = "dark"
+
+# Accent
+primaryColor = "#7AA2FF"
+
+# App surfaces
+# for secondaryBackgroundColor "#1A2447"  or  "#121A33"
+backgroundColor = "#0B1020"
+secondaryBackgroundColor = "#121A33"
+
+# Text
+textColor = "#E6EAF2"
+font = "sans-serif"
+
+# Edge rounding
+baseRadius = "0.9rem"
+buttonRadius = "999px"
+borderColor = "#2A3556"
+showWidgetBorder = true
+
+[theme.sidebar]
+backgroundColor = "#0B1020"
+secondaryBackgroundColor = "#121A33"
+textColor = "#E6EAF2"
+primaryColor = "#7AA2FF"
+

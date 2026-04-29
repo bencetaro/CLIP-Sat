@@ -37,17 +37,19 @@ def show_inference_ui():
     api_base_url = _api_base_url()
 
     runs, default_run = _get_runs(api_base_url)
-    run_ids = [r["id"] for r in runs]
 
     st.sidebar.header("Settings")
+    run_names = [r["name"] for r in runs]
     selected_run = st.sidebar.selectbox(
-        "Model (W&B run id)",
-        options=(run_ids if run_ids else ["(no runs found)"]),
-        index=(run_ids.index(default_run) if default_run in run_ids else 0),
-        disabled=not bool(run_ids),
+        "Model (W&B run name)",
+        options=(run_names if run_names else ["(no runs found)"]),
+        index=(run_names.index(default_run) if default_run in run_names else 0),
+        disabled=not bool(run_names),
     )
-    top_k = st.sidebar.slider("Top-K", min_value=1, max_value=14, value=5)
-    with st.sidebar.expander("Advanced", expanded=False):
+    chosen_id = next((r["id"] for r in runs if r["name"] == selected_run), None)
+
+    with st.sidebar.expander("Settings", expanded=False):
+        top_k = st.slider("Top-K Class Filter", min_value=1, max_value=14, value=3)
         try_gpu = st.toggle("Try GPU (CUDA)", value=False, help="Default is CPU. Enable only if your server CUDA setup is correct.")
 
     try:
@@ -78,7 +80,7 @@ def show_inference_ui():
         st.caption("Tip: warm the backend by selecting a run and hitting Predict once (it will download the W&B model artifact).")
 
     if run_btn:
-        run_id = selected_run if run_ids else None
+        run_id = chosen_id if run_names else None
         status = st.status("Running inference…", expanded=False)
         try:
             with st.spinner("Sending request to API…"):
@@ -104,3 +106,10 @@ def show_inference_ui():
         dist = pd.DataFrame({"label": labels, "prob": probs}).sort_values("prob", ascending=False)
         st.subheader("Prediction distribution")
         st.bar_chart(dist.set_index("label")["prob"])
+
+    st.divider()
+    st.caption(
+    """
+    **Photo by [SpaceX](https://images.unsplash.com/photo-1460186136353-977e9d6085a1?q=80&w=2340&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D) on [Unsplash](https://unsplash.com).**
+    """
+    )

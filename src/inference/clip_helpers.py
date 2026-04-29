@@ -87,6 +87,9 @@ def _decode_base64_image(data: str) -> bytes:
         data = data.split(",", 1)[1]
     return base64.b64decode(data)
 
+def get_base64(img_path: str):
+    with open(img_path, "rb") as f:
+        return base64.b64encode(f.read()).decode()
 
 # ----------------------
 # MAIN PREPROCESSING
