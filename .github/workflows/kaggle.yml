@@ -77,7 +77,7 @@ jobs:
         if: steps.filter.outputs.notebook == 'true' || steps.filter.outputs.dataset == 'true'
         run: |
           mkdir -p "${WANDB_DIR}" "${WANDB_CACHE_DIR}" "${WANDB_DATA_DIR}" "${WANDB_CONFIG_DIR}"
-          wandb login --relogin "${WANDB_API_KEY}"
+          wandb login --relogin "${WANDB_API_KEY}" >/dev/null 2>&1
           python .github/scripts/sync_kaggle_wandb.py --output-dir output --project "${WANDB_PROJECT}"
         env:
           WANDB_API_KEY: ${{ secrets.WANDB_API_KEY }}
@@ -87,3 +87,7 @@ jobs:
           WANDB_CACHE_DIR: ${{ github.workspace }}/.wandb/cache
           WANDB_DATA_DIR: ${{ github.workspace }}/.wandb/data
           WANDB_CONFIG_DIR: ${{ github.workspace }}/.wandb/config
+          WANDB_SILENT: "true"
+          WANDB_CONSOLE: "off"
+          WANDB_DISABLE_CODE: "true"
+          WANDB_DISABLE_GIT: "true"

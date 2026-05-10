@@ -1,5 +1,5 @@
 run_name: ft-top-focal
-loss_fn: focal
+loss_fn: ce
 layers: top
 optim: adam
 lr: 0.0001
