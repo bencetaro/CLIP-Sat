@@ -1,0 +1,197 @@
+{
+  "title": "CLIPSAT W&B + Cache + DB Monitoring",
+  "uid": "clipsat-cache",
+  "schemaVersion": 42,
+  "version": 1,
+  "refresh": "10s",
+  "timezone": "browser",
+  "tags": ["clipsat", "cache", "wandb"],
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "model",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": "label_values(model_cache_hit_total, model)",
+        "multi": true,
+        "includeAll": true
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Model Cache Hit Ratio %",
+      "gridPos": { "h": 5, "w": 6, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "(sum(rate(model_cache_hit_total[5m])) / (sum(rate(model_cache_hit_total[5m])) + sum(rate(model_cache_miss_total[5m])))) * 100"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent"
+        }
+      }
+    },
+
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "W&B Cache Hit Ratio %",
+      "gridPos": { "h": 5, "w": 6, "x": 6, "y": 0 },
+      "targets": [
+        {
+          "expr": "(sum(rate(wandb_cache_lookups_total{result=\"hit\"}[5m])) / sum(rate(wandb_cache_lookups_total[5m]))) * 100"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent"
+        }
+      }
+    },
+
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Current W&B Cache Entries",
+      "gridPos": { "h": 5, "w": 6, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "wandb_cache_entries"
+        }
+      ]
+    },
+
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "DB Errors (24h)",
+      "gridPos": { "h": 5, "w": 6, "x": 18, "y": 0 },
+      "targets": [
+        {
+          "expr": "increase(db_errors_total[24h])"
+        }
+      ]
+    },
+
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Model Cache Hits vs Misses",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 5 },
+      "targets": [
+        {
+          "expr": "sum(rate(model_cache_hit_total[5m])) by (model)",
+          "legendFormat": "{{model}} hits"
+        },
+        {
+          "expr": "sum(rate(model_cache_miss_total[5m])) by (model)",
+          "legendFormat": "{{model}} misses"
+        }
+      ]
+    },
+
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "W&B Cache Lookups",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 5 },
+      "targets": [
+        {
+          "expr": "sum(rate(wandb_cache_lookups_total[5m])) by (result)",
+          "legendFormat": "{{result}}"
+        }
+      ]
+    },
+
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "W&B Fetch Latency P95",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 13 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(wandb_fetch_latency_seconds_bucket[5m])) by (le, cache))",
+          "legendFormat": "{{cache}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        }
+      }
+    },
+
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "W&B Cache Entry Age P95",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 13 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(wandb_cache_entry_age_seconds_bucket[5m])) by (le, cache))",
+          "legendFormat": "{{cache}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        }
+      }
+    },
+
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Model Load Latency P95",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 21 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(model_load_latency_seconds_bucket[5m])) by (le, model))",
+          "legendFormat": "{{model}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        }
+      }
+    },
+
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Model Load Errors",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 21 },
+      "targets": [
+        {
+          "expr": "increase(model_load_errors_total[1h])",
+          "legendFormat": "{{model}}"
+        }
+      ]
+    },
+
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "DB Errors by Stage",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 29 },
+      "targets": [
+        {
+          "expr": "sum(rate(db_errors_total[5m])) by (stage)",
+          "legendFormat": "{{stage}}"
+        }
+      ]
+    }
+  ]
+}

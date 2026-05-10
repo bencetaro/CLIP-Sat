@@ -9,7 +9,7 @@ import plotly.express as px
 import requests
 import streamlit as st
 
-from src.inference.wandb_helpers import parse_clf_report, parse_clf_report_split
+from src.inference.helpers.wandb_helpers import parse_clf_report, parse_clf_report_split
 
 class_mapping = {
     0: 'Agriculture',

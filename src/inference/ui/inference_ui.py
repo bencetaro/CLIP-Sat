@@ -49,8 +49,9 @@ def show_inference_ui():
     chosen_id = next((r["id"] for r in runs if r["name"] == selected_run), None)
 
     with st.sidebar.expander("Settings", expanded=False):
-        top_k = st.slider("Top-K Class Filter", min_value=1, max_value=14, value=3)
+        top_k = st.slider("Top-K Class Filter", min_value=1, max_value=14, value=5)
         try_gpu = st.toggle("Try GPU (CUDA)", value=False, help="Default is CPU. Enable only if your server CUDA setup is correct.")
+        # for this single image inference CPU is good enough anyway
 
     try:
         r = requests.get(f"{api_base_url}/health", timeout=3)

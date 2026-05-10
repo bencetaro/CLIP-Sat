@@ -6,7 +6,7 @@ from typing import Optional
 
 import streamlit as st
 
-from src.inference.clip_helpers import get_base64
+from src.inference.helpers.clip_helpers import get_base64
 
 
 def _guess_mime(path: str) -> str:
@@ -79,9 +79,15 @@ def apply_global_style(
         /* Rounded + glassy containers (experimental) */
         div[data-testid="stVerticalBlockBorderWrapper"] {{
             border-radius: 1rem;
-            border: 1px solid rgba(255, 255, 255, 0.10);
-            background: rgba(18, 26, 51, 0.55);
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            background: rgba(18, 26, 51, 0.84);
             backdrop-filter: blur(8px);
+        }}
+
+        div[data-testid="stDataFrame"],
+        div[data-testid="stTable"] {{
+            border-radius: 0.75rem;
+            overflow: hidden;
         }}
 
         /* Inputs (BaseWeb) */
