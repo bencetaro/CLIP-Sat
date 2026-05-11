@@ -33,3 +33,8 @@ class BatchPredictRequest(BaseModel):
 
 class BatchPredictResponse(BaseModel):
     results: List[PredictResponse]
+
+
+class FeedbackRequest(BaseModel):
+    app_rating: int = Field(ge=1, le=5)
+    app_comment: Optional[str] = Field(default=None, max_length=2000)

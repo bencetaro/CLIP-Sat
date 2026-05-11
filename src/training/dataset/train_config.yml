@@ -1,4 +1,4 @@
-run_name: ft-top-focal
+run_name: ce-top-adam
 loss_fn: ce
 layers: top
 optim: adam

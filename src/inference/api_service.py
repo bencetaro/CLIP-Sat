@@ -1,24 +1,22 @@
 from __future__ import annotations
 
+import base64
 import json
+import logging
 import os
 import threading
 import time
-import logging
-import pandas as pd
-import base64
 import torch
 from pathlib import Path
 from typing import Any, Dict, Optional
-from dotenv import load_dotenv
-load_dotenv()
-
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from prometheus_client import Counter, Gauge, Histogram, make_asgi_app
+from dotenv import load_dotenv
+load_dotenv()
 
-from src.inference.db import check_db, init_db, log_prediction
+from src.inference.db import check_db, init_db, log_app_feedback, log_prediction
 from src.inference.helpers.clip_helpers import (
     DEFAULT_CLASS_NAMES,
     clip_predict_classes,
@@ -34,8 +32,7 @@ from src.inference.helpers.wandb_helpers import (
     load_run,
 )
 from src.inference.schemas import (
-    BatchPredictRequest,
-    BatchPredictResponse,
+    FeedbackRequest,
     PredictRequest,
     PredictResponse,
     ScoredLabel,
@@ -158,6 +155,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     INVALID_PAYLOAD.labels(request.url.path).inc()
     return JSONResponse(status_code=422, content={"detail": exc.errors()})
 
+
 # ----------------------
 # MODEL ARTIFACT CACHE (per-run download paths)
 # ----------------------
@@ -192,12 +190,14 @@ def _cache_get(key: str) -> Optional[Any]:
         WANDB_CACHE_ENTRY_AGE.labels(cache).observe(now - item["ts"])
         return item["value"]
 
+
 def _cache_set(key: str, value: Any) -> None:
     if WANDB_CACHE_TTL_SECONDS <= 0:
         return
     with _wandb_cache_lock:
         _wandb_cache[key] = {"ts": time.time(), "value": value}
         WANDB_CACHE_ENTRIES.set(len(_wandb_cache))
+
 
 def _can_use_cuda() -> bool:
     if os.getenv("FORCE_CPU", "").strip().lower() in {"1", "true", "yes"}:
@@ -222,9 +222,11 @@ def _require_wandb_config():
             detail="W&B config missing. Set WANDB_ENTITY and WANDB_PROJECT (and WANDB_API_KEY if private).",
         )
 
+
 def _artifact_root_for_run(run_id: str) -> str:
     safe = "".join(c for c in run_id if c.isalnum() or c in "-_").strip() or "run"
     return str(Path(ARTIFACT_CACHE_DIR) / safe)
+
 
 def _get_or_sync_model_artifact(run_id: str) -> Dict[str, Any]:
     with _artifact_lock:
@@ -251,7 +253,9 @@ def _get_or_sync_model_artifact(run_id: str) -> Dict[str, Any]:
         artifact_dir = None
         pt_path = None
         for candidate in artifacts:
-            candidate_dir = download_artifact(candidate, root_dir=_artifact_root_for_run(run_id))
+            candidate_dir = download_artifact(
+                candidate, root_dir=_artifact_root_for_run(run_id)
+            )
             candidate_pt = find_first_pt_file(candidate_dir)
             if candidate_pt:
                 artifact = candidate
@@ -267,7 +271,8 @@ def _get_or_sync_model_artifact(run_id: str) -> Dict[str, Any]:
 
         entry = {
             "run_id": run_id,
-            "artifact_name": getattr(artifact, "name", None) or getattr(artifact, "qualified_name", None),
+            "artifact_name": getattr(artifact, "name", None)
+            or getattr(artifact, "qualified_name", None),
             "artifact_dir": artifact_dir,
             "pt_path": pt_path,
             "synced_at": time.time(),
@@ -291,13 +296,27 @@ def _effective_run_id(body_run_id: Optional[str], query_model: Optional[str]) ->
     return body_run_id or query_model or WANDB_RUN_ID
 
 
-def _make_response(*, run_id: Optional[str], artifact: Optional[str], probs: list[float], top_k: int, class_names: list[str]) -> PredictResponse:
+def _make_response(
+    *,
+    run_id: Optional[str],
+    artifact: Optional[str],
+    probs: list[float],
+    top_k: int,
+    class_names: list[str],
+) -> PredictResponse:
 
     if len(probs) != len(class_names):
         raise HTTPException(status_code=500, detail="Model output size does not match class list.")
 
     pred_id = int(max(range(len(probs)), key=lambda i: probs[i]))
-    scored = sorted([ScoredLabel(label=class_names[i], score=float(probs[i])) for i in range(len(probs))], key=lambda x: x.score, reverse=True)[:top_k]
+    scored = sorted(
+        [
+            ScoredLabel(label=class_names[i], score=float(probs[i]))
+            for i in range(len(probs))
+        ],
+        key=lambda x: x.score,
+        reverse=True,
+    )[:top_k]
 
     return PredictResponse(
         run_id=run_id,
@@ -309,6 +328,7 @@ def _make_response(*, run_id: Optional[str], artifact: Optional[str], probs: lis
         top_k=scored,
     )
 
+
 def _observe_prediction_metrics(endpoint: str, model_label: str, probs: list[float], class_names: list[str]) -> None:
     if len(probs) != len(class_names):
         return
@@ -317,13 +337,21 @@ def _observe_prediction_metrics(endpoint: str, model_label: str, probs: list[flo
     pred_id = int(max(range(len(probs)), key=lambda i: probs[i]))
     PREDICTED_CLASS.labels(endpoint, model_label, class_names[pred_id]).inc()
 
+
 # ----------------------
 # ROUTES
 # ----------------------
 @app.get("/health")
 def health():
-    db_enabled = os.getenv("DB_ENABLED", "1").strip().lower() not in {"0", "false", "no"}
-    payload: Dict[str, Any] = {"status": "ok", "db": "disabled" if not db_enabled else "unknown"}
+    db_enabled = os.getenv("DB_ENABLED", "1").strip().lower() not in {
+        "0",
+        "false",
+        "no",
+    }
+    payload: Dict[str, Any] = {
+        "status": "ok",
+        "db": "disabled" if not db_enabled else "unknown",
+    }
     if db_enabled:
         try:
             check_db()
@@ -332,6 +360,7 @@ def health():
             payload["db"] = "error"
             payload["db_error"] = str(e)
     return payload
+
 
 @app.on_event("startup")
 def startup_event():
@@ -344,10 +373,25 @@ def startup_event():
         DB_ERRORS.labels("init").inc()
         logger.exception("DB init failed; continuing without DB. Error: %s", e)
 
+
 @app.post("/ui/page_view")
 def ui_page_view(page: str = Query(..., min_length=1)):
     PAGE_VIEWS.labels(f"/ui/{page}").inc()
     return {"status": "ok", "page": page}
+
+
+@app.post("/ui/feedback")
+def ui_feedback(req: FeedbackRequest):
+    if os.getenv("DB_ENABLED", "1").strip().lower() in {"0", "false", "no"}:
+        raise HTTPException(status_code=503, detail="DB is disabled (DB_ENABLED=0).")
+    try:
+        log_app_feedback(app_rating=req.user_rating, app_comment=req.user_feedback)
+    except Exception as e:
+        DB_ERRORS.labels("write_feedback").inc()
+        logger.exception("Feedback write failed. Error: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to save feedback.") from e
+    return {"status": "ok"}
+
 
 @app.get("/models")
 def models(refresh: bool = Query(default=False, description="Bypass in-memory cache")):
@@ -378,8 +422,12 @@ def models(refresh: bool = Query(default=False, description="Bypass in-memory ca
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
+
 @app.get("/wandb/history")
-def wandb_history(run_id: str, refresh: bool = Query(default=False, description="Bypass in-memory cache")):
+def wandb_history(
+    run_id: str,
+    refresh: bool = Query(default=False, description="Bypass in-memory cache"),
+):
     _require_wandb_config()
     cache_key = f"history:{WANDB_ENTITY}:{WANDB_PROJECT}:{run_id}"
     if not refresh:
@@ -393,8 +441,12 @@ def wandb_history(run_id: str, refresh: bool = Query(default=False, description=
     _cache_set(cache_key, payload)
     return payload
 
+
 @app.get("/wandb/metadata")
-def wandb_metadata(run_id: str, refresh: bool = Query(default=False, description="Bypass in-memory cache")):
+def wandb_metadata(
+    run_id: str,
+    refresh: bool = Query(default=False, description="Bypass in-memory cache"),
+):
     _require_wandb_config()
     cache_key = f"metadata:{WANDB_ENTITY}:{WANDB_PROJECT}:{run_id}"
     if not refresh:
@@ -413,8 +465,12 @@ def wandb_metadata(run_id: str, refresh: bool = Query(default=False, description
     _cache_set(cache_key, payload)
     return payload
 
+
 @app.get("/wandb/clf_report")
-def wandb_clf_report(run_id: str, refresh: bool = Query(default=False, description="Bypass in-memory cache")):
+def wandb_clf_report(
+    run_id: str,
+    refresh: bool = Query(default=False, description="Bypass in-memory cache"),
+):
     _require_wandb_config()
     cache_key = f"clf_report:{WANDB_ENTITY}:{WANDB_PROJECT}:{run_id}"
     if not refresh:
@@ -439,8 +495,12 @@ def wandb_clf_report(run_id: str, refresh: bool = Query(default=False, descripti
     WANDB_FETCH_TIME.labels(_cache_name(cache_key)).observe(time.time() - fetch_start)
     return {"error": "not found"}
 
+
 @app.get("/wandb/confusion_matrix")
-def wandb_confusion_matrix(run_id: str, refresh: bool = Query(default=False, description="Bypass in-memory cache")):
+def wandb_confusion_matrix(
+    run_id: str,
+    refresh: bool = Query(default=False, description="Bypass in-memory cache"),
+):
     _require_wandb_config()
     cache_key = f"confusion_matrix:{WANDB_ENTITY}:{WANDB_PROJECT}:{run_id}"
     if not refresh:
@@ -453,7 +513,9 @@ def wandb_confusion_matrix(run_id: str, refresh: bool = Query(default=False, des
     candidates = []
     for f in run.files():
         name = f.name.lower()
-        if ("confusion" in name or "confusion_matrix" in name) and name.endswith((".png", ".jpg", ".jpeg", ".webp")):
+        if ("confusion" in name or "confusion_matrix" in name) and name.endswith(
+            (".png", ".jpg", ".jpeg", ".webp")
+        ):
             candidates.append(f)
 
     if not candidates:
@@ -463,7 +525,7 @@ def wandb_confusion_matrix(run_id: str, refresh: bool = Query(default=False, des
     # Prefer most recently updated file when available.
     candidates = sorted(
         candidates,
-        key=lambda f: getattr(f, "updated_at", None) or getattr(f, "created_at", None) or 0,
+        key=lambda f: (getattr(f, "updated_at", None) or getattr(f, "created_at", None) or 0),
         reverse=True,
     )
     f = candidates[0]
@@ -475,8 +537,12 @@ def wandb_confusion_matrix(run_id: str, refresh: bool = Query(default=False, des
     _cache_set(cache_key, payload)
     return payload
 
+
 @app.get("/wandb/artifacts")
-def wandb_artifacts(run_id: str, refresh: bool = Query(default=False, description="Bypass in-memory cache")):
+def wandb_artifacts(
+    run_id: str,
+    refresh: bool = Query(default=False, description="Bypass in-memory cache"),
+):
     _require_wandb_config()
     cache_key = f"artifacts:{WANDB_ENTITY}:{WANDB_PROJECT}:{run_id}"
     if not refresh:
@@ -490,6 +556,7 @@ def wandb_artifacts(run_id: str, refresh: bool = Query(default=False, descriptio
     _cache_set(cache_key, payload)
     return payload
 
+
 @app.post("/wandb/sync_model")
 def wandb_sync_model(run_id: str):
     """Download latest model artifact (.pt) for a run and warm the cache."""
@@ -500,6 +567,7 @@ def wandb_sync_model(run_id: str):
         "pt_path": entry.get("pt_path"),
         "synced_at": entry.get("synced_at"),
     }
+
 
 @app.post("/predict", response_model=PredictResponse)
 def predict(
@@ -527,7 +595,9 @@ def predict(
             device_norm = device.strip().lower()
             if device_norm not in {"cpu", "cuda"}:
                 INVALID_PAYLOAD.labels(endpoint).inc()
-                raise HTTPException(status_code=400, detail="Invalid device. Use 'cpu' or 'cuda'.")
+                raise HTTPException(
+                    status_code=400, detail="Invalid device. Use 'cpu' or 'cuda'."
+                )
             if device_norm == "cuda":
                 if not _can_use_cuda():
                     PREDICTION_ERRORS.labels(endpoint, model_label, "device").inc()

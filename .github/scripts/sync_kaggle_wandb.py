@@ -23,7 +23,7 @@ def sync_offline_runs(run_files: list[Path], entity: str | None) -> list[str]:
         raise RuntimeError("No offline W&B run files found.")
 
     source_run_ids: list[str] = []
-    sync_args = ["--include-offline"]
+    sync_args = ["--include-offline", "--quiet"]
     if entity:
         sync_args.extend(["--entity", entity])
 
