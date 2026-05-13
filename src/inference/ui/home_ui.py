@@ -1,6 +1,7 @@
 import streamlit as st
 import os
 import requests
+import pandas as pd
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -31,11 +32,14 @@ def show_home_ui():
         ### What’s in this demo
 
         - **Make inference on a CLIP-Sat model:**
-            - Upload an image (or paste a URL) and predict the following categories:
-            - Agriculture, Airport, Beach, Desert, Forest, Grassland, Highway, Lake, Mountain, Parking, Port, Railway, Residential, River.
+            - Upload an image (or paste a URL) and predict with the chosen pretrained model.
+            - The input images are classified by the model with a confidence score for each of the following classes:
+                - :violet-badge[Agriculture] :violet-badge[Airport] :violet-badge[Beach] :violet-badge[Desert] :violet-badge[Forest] :violet-badge[Grassland] :violet-badge[Highway]
+                - :violet-badge[Lake] :violet-badge[Mountain] :violet-badge[Parking] :violet-badge[Port] :violet-badge[Railway] :violet-badge[Residental] :violet-badge[River]
+            - Optionally, you can generate an LLM review of the prediction results.
         - **Inspect the training results:**
             - Browse W&B runs, their configs, summaries, and training statistics.
-        - **Compare training runs (Not ready yet):**
+        - **Compare training runs (Not available yet):**
             - Compare different experiments based on custom settings (metrics, parameters, runtime, etc.).
 
         ### About the training
@@ -55,7 +59,7 @@ def show_home_ui():
     with st.form("app_feedback_form", clear_on_submit=True):
         selected = st.feedback("stars")
         rating = 0 if selected is None else selected + 1
-        comment = st.text_area("Leave your comments below (optional):", placeholder="What worked well? What should change?")
+        comment = st.text_area("Leave your comments below:", placeholder="What worked well? What should change?")
         submitted = st.form_submit_button("Send feedback")
 
     if submitted:
@@ -67,7 +71,7 @@ def show_home_ui():
                 timeout=5,
             )
             if r.status_code == 200:
-                st.success("Thank you very much for your feedback!")
+                st.success("Thank you for your feedback!")
             else:
                 st.error(f"Failed to save feedback: {r.text}")
         except Exception as e:

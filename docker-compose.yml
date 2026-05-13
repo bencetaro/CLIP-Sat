@@ -24,6 +24,9 @@ services:
       - "8000:8000"
     env_file:
       - .env
+    volumes:
+      - hf_cache:/root/.cache/huggingface
+      - ./models:/app/models
     restart: unless-stopped
     depends_on:
       postgres:
@@ -38,6 +41,8 @@ services:
       - "8501:8501"
     env_file:
       - .env
+    environment:
+      STREAMLIT_SERVER_FILE_WATCHER_TYPE: "none"
     restart: unless-stopped
     depends_on:
       - fastapi
@@ -76,3 +81,4 @@ services:
 
 volumes:
   postgres_data:
+  hf_cache:

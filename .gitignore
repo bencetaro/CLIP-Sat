@@ -3,6 +3,7 @@ tmp/
 artifacts/
 postgres_data/
 output/
+models/
 __pycache__/
 *.pyc
 *.env

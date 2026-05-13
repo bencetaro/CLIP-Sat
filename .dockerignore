@@ -2,6 +2,7 @@ media/
 tmp/
 artifacts/
 postgres_data/
+models/
 __pycache__/
 *.pyc
 *.git

@@ -1,13 +1,9 @@
 import os
+import psycopg2
 from datetime import datetime
 from typing import Optional
-
-import psycopg2
-
-# stores Python dict as JSONB
+from psycopg2.extras import Json # stores Python dict as JSONB
 from dotenv import load_dotenv
-from psycopg2.extras import Json
-
 load_dotenv()
 
 # Note: Later "image_url" could point to a s3 bucket storing the saved image, uploaded by user.

@@ -3,15 +3,36 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
+import os
+import threading
 import wandb
 import pandas as pd
 
+_api_lock = threading.Lock()
+_api_client: Optional[wandb.Api] = None
+
+
+def _api() -> wandb.Api:
+    """
+    Return a singleton W&B API client.
+    W&B public API calls can time out; configure via WANDB_API_TIMEOUT seconds.
+    """
+    global _api_client
+    if _api_client is not None:
+        return _api_client
+    with _api_lock:
+        if _api_client is not None:
+            return _api_client
+        timeout_s = int(os.getenv("WANDB_API_TIMEOUT", "60"))
+        _api_client = wandb.Api(timeout=timeout_s)
+        return _api_client
+
 
 def load_run(entity: str, project: str, run_id: str):
-    return wandb.Api().run(f"{entity}/{project}/{run_id}")
+    return _api().run(f"{entity}/{project}/{run_id}")
 
 def list_runs(entity: str, project: str, per_page: int = 50):
-    return wandb.Api().runs(f"{entity}/{project}", per_page=per_page)
+    return _api().runs(f"{entity}/{project}", per_page=per_page)
 
 def get_history(run, keys: Optional[List[str]] = None, samples: int = 1000):
     if keys is None:

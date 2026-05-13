@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import os
+import streamlit as st
 from pathlib import Path
 from typing import Optional
 
-import streamlit as st
-
-from src.inference.helpers.clip_helpers import get_base64
+from src.inference.utils.clip_helpers import get_base64
 
 
 def _guess_mime(path: str) -> str:

@@ -8,7 +8,7 @@ class PredictRequest(BaseModel):
     run_id: Optional[str] = Field(default=None, description="W&B run id (model source).")
     image_url: Optional[str] = Field(default=None, description="Image URL to fetch.")
     image_base64: Optional[str] = Field(default=None, description="Raw base64 or data URL.")
-    top_k: int = Field(default=5, ge=1, le=50)
+    top_k: int = Field(default=5, ge=1, le=14)
 
 
 class ScoredLabel(BaseModel):
@@ -36,5 +36,13 @@ class BatchPredictResponse(BaseModel):
 
 
 class FeedbackRequest(BaseModel):
-    app_rating: int = Field(ge=1, le=5)
-    app_comment: Optional[str] = Field(default=None, max_length=2000)
+    user_rating: int = Field(ge=1, le=5, validation_alias="app_rating")
+    user_feedback: Optional[str] = Field(default=None, max_length=2000, validation_alias="app_comment")
+
+
+class LLMReviewRequest(BaseModel):
+    labels: List[str] = Field(min_length=1)
+    probs: List[float] = Field(min_length=1)
+    top_k: int = Field(default=5, ge=1, le=14)
+    backend: str = Field(default="llama_cpp")
+    use_gpu: bool = Field(default=False)
