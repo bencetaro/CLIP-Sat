@@ -113,6 +113,7 @@ def show_inference_ui():
         labels = res["labels"]
         probs = res["probs"]
         st.session_state["last_prediction"] = {
+            "prediction_id": res.get("prediction_id", ""),
             "predicted_label": res.get("predicted_label"),
             "latency": float(latency),
             "labels": labels,
@@ -146,43 +147,30 @@ def show_inference_ui():
         )
         st.caption("Note: First call may be slow due to model load. If resources are limited, start with `Llama.cpp` on CPU.")
 
-        # ## Perhaps not necessary (kept for debugging)
-        # warmup_btn = st.button("Warm up selected LLM", key="llm_warmup_btn")
-        # if warmup_btn:
-        #     warmup_status = st.status("Warming up LLM…", expanded=False)
-        #     try:
-        #         wr = requests.post(
-        #             f"{api_base_url}/llm/warmup",
-        #             params={"backend": llm_backend_chosen, "use_gpu": llm_use_gpu},
-        #             timeout=600,
-        #         )
-        #         if wr.status_code != 200:
-        #             warmup_status.update(label="Warmup failed", state="error")
-        #             st.error(wr.text)
-        #         else:
-        #             warmup_status.update(label="Warmup complete", state="complete")
-        #             info = wr.json()
-        #             st.info(
-        #                 f"Loaded backend={info.get('backend')} "
-        #                 f"gpu={info.get('use_gpu')} "
-        #                 f"in {info.get('took_s', 0):.2f}s"
-        #             )
-        #     except Exception as e:
-        #         warmup_status.update(label="Warmup failed", state="error")
-        #         st.error(f"LLM warmup request failed: {e}")
-
-        llm_btn = st.button("Generate LLM answer", type="secondary", key="llm_generate_btn")
+        llm_btn = st.button("Generate explanation", type="secondary", key="llm_generate_btn")
         if llm_btn:
             llm_status = st.status("Generating LLM review…", expanded=False)
+
             try:
-                payload = {
+                wr = requests.post(
+                    f"{api_base_url}/llm/warmup",
+                    params={"backend": llm_backend_chosen, "use_gpu": llm_use_gpu},
+                    timeout=600,
+                )
+                if wr.status_code != 200:
+                    llm_status.update(label="LLM warmup failed", state="error")
+                    st.error(wr.text)
+                    return
+
+                gen_payload = {
                     "labels": last["labels"],
                     "probs": last["probs"],
                     "top_k": last["top_k"],
                     "backend": llm_backend_chosen,
                     "use_gpu": llm_use_gpu,
+                    "prediction_id": last.get("prediction_id"),
                 }
-                rr = requests.post(f"{api_base_url}/llm/review", json=payload, timeout=600)
+                rr = requests.post(f"{api_base_url}/llm/review", json=gen_payload, timeout=600)
                 if rr.status_code != 200:
                     llm_status.update(label="LLM failed", state="error")
                     st.error(rr.text)
@@ -215,6 +203,9 @@ def show_inference_ui():
                         f"LLM backend={out.get('backend')} gpu={out.get('use_gpu')} "
                         f"took {out.get('took_s', 0):.2f}s"
                     )
+                    if out.get("db_updated") is False:
+                        st.warning("LLM generated, but DB update failed. Check FastAPI logs.")
+
             except Exception as e:
                 llm_status.update(label="LLM failed", state="error")
                 st.error(f"LLM request failed: {e}")

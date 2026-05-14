@@ -16,7 +16,7 @@ from prometheus_client import make_asgi_app
 from dotenv import load_dotenv
 load_dotenv()
 
-from src.inference.utils.db import check_db, init_db, log_app_feedback, log_prediction
+from src.inference.utils.db import check_db, init_db, log_app_feedback, log_prediction, update_prediction
 from src.inference.utils.clip_helpers import (
     DEFAULT_CLASS_NAMES,
     clip_predict_classes,
@@ -360,7 +360,7 @@ def llm_review(req: LLMReviewRequest):
     parsed = extract_json(raw)
     LLM_REQUESTS.labels(endpoint, "ok").inc()
     LLM_LATENCY.labels(endpoint).observe(time.time() - start)
-    return {
+    payload = {
         "status": "ok",
         "took_s": time.time() - start,
         "backend": backend,
@@ -370,6 +370,20 @@ def llm_review(req: LLMReviewRequest):
         "parsed": parsed,
         "raw": raw if parsed is None else None,
     }
+    if os.getenv("DB_ENABLED", "1").strip().lower() not in {"0", "false", "no"} and req.prediction_id:
+        try:
+            update_prediction(
+                prediction_id=req.prediction_id,
+                llm_backend=backend,
+                llm_answer=parsed if parsed is not None else {"raw": str(raw)},
+                llm_status="completed",
+            )
+            payload["db_updated"] = True
+        except Exception as e:
+            DB_ERRORS.labels("write_llm").inc()
+            logger.exception("DB llm update failed; returning LLM result anyway. Error: %s", e)
+            payload["db_updated"] = False
+    return payload
 
 
 @app.post("/llm/warmup")
@@ -645,15 +659,14 @@ def predict(
         if os.getenv("DB_ENABLED", "1").strip().lower() not in {"0", "false", "no"}:
             try:
                 db_preds = {DEFAULT_CLASS_NAMES[i]: float(probs[i]) for i in range(len(probs))}
-                log_prediction(
+                prediction_id = log_prediction(
                     image_url=req.image_url,
-                    model_name=CLIP_MODEL_NAME,
+                    run_id=run_id or "zero-shot",
                     device_type=device_to_use,
                     predictions=db_preds,
-                    chatbot_ans=None,
-                    user_rating=None,
-                    user_feedback=None,
+                    top_k=req.top_k,
                 )
+                resp.prediction_id = prediction_id
             except Exception as e:
                 DB_ERRORS.labels("write").inc()
                 logger.exception("DB write failed; returning prediction anyway. Error: %s", e)

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional
 
 
@@ -24,15 +24,8 @@ class PredictResponse(BaseModel):
     labels: List[str]
     probs: List[float]
     top_k: List[ScoredLabel]
-
-
-class BatchPredictRequest(BaseModel):
-    run_id: Optional[str] = None
-    items: List[PredictRequest]
-
-
-class BatchPredictResponse(BaseModel):
-    results: List[PredictResponse]
+    prediction_id: Optional[int] = None
+    model_config = ConfigDict(extra="forbid")
 
 
 class FeedbackRequest(BaseModel):
@@ -46,3 +39,4 @@ class LLMReviewRequest(BaseModel):
     top_k: int = Field(default=5, ge=1, le=14)
     backend: str = Field(default="llama_cpp")
     use_gpu: bool = Field(default=False)
+    prediction_id: Optional[int] = Field(default=None, ge=1)

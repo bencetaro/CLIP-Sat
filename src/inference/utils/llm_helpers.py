@@ -54,7 +54,7 @@ def get_llm_client(backend: str = "llama_cpp", use_gpu: bool = False):
                 device=device,
             )
         else:
-            model_path = os.getenv("LLM_CPP_MODEL_PATH", os.getenv("LLM_MODEL_ID", "./models/qwen2.5-1.5b-instruct-q4_k_m.gguf"))
+            model_path = os.getenv("LLM_CPP_MODEL_PATH", os.getenv("LLM_MODEL_ID", "/app/models/qwen2.5-1.5b-instruct-q4_k_m.gguf"))
             n_ctx = int(os.getenv("LLM_CTX", "2048"))
             n_threads = int(os.getenv("LLM_THREADS", "8"))
             n_gpu_layers = int(os.getenv("LLM_GPU_LAYERS", "35")) if use_gpu else 0

@@ -36,13 +36,40 @@ class SimpleLLM:
     def llm_response(self, prompt:str):
         try:
             target_device = "cuda" if str(self.device).lower() in {"cuda", "gpu"} else "cpu"
-            inputs = self.tokenizer(prompt, return_tensors="pt").to(target_device)
-            outputs = self.model.generate(
-                **inputs,
-                max_new_tokens=self.max_tokens,
-                temperature=self.temperature,
-            )
-            result = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+            use_chat = bool(getattr(self.tokenizer, "chat_template", None)) and hasattr(self.tokenizer, "apply_chat_template")
+            if use_chat:
+                messages = [
+                    {"role": "system", "content": "Output valid JSON only, no markdown and no extra text."},
+                    {"role": "user", "content": prompt},
+                ]
+                input_ids = self.tokenizer.apply_chat_template(
+                    messages,
+                    add_generation_prompt=True,
+                    return_tensors="pt",
+                ).to(target_device)
+                outputs = self.model.generate(
+                    input_ids=input_ids,
+                    max_new_tokens=self.max_tokens,
+                    temperature=self.temperature,
+                    do_sample=(self.temperature is not None and float(self.temperature) > 0),
+                    pad_token_id=getattr(self.tokenizer, "pad_token_id", None) or getattr(self.tokenizer, "eos_token_id", None),
+                    eos_token_id=getattr(self.tokenizer, "eos_token_id", None),
+                )
+                generated_ids = outputs[0][input_ids.shape[-1]:]
+            else:
+                inputs = self.tokenizer(prompt, return_tensors="pt").to(target_device)
+                outputs = self.model.generate(
+                    **inputs,
+                    max_new_tokens=self.max_tokens,
+                    temperature=self.temperature,
+                    do_sample=(self.temperature is not None and float(self.temperature) > 0),
+                    pad_token_id=getattr(self.tokenizer, "pad_token_id", None) or getattr(self.tokenizer, "eos_token_id", None),
+                    eos_token_id=getattr(self.tokenizer, "eos_token_id", None),
+                )
+                prompt_len = inputs["input_ids"].shape[-1]
+                generated_ids = outputs[0][prompt_len:]
+
+            result = self.tokenizer.decode(generated_ids, skip_special_tokens=True).strip()
             return result
         except Exception as e:
             raise AttributeError(
