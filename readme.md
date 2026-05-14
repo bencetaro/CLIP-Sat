@@ -1,26 +1,52 @@
 # CLIP-Sat 🛰️
 
-CLIP-Sat is a satellite image classification demo built around a finetuned CLIP model, with:
+CLIP-Sat is a project where I explore satellite image classification with a finetuned CLIP model. It currently includes:
 - FastAPI inference API
 - Streamlit UI
 - Postgres persistence
 - W&B run/artifact integration
 - Optional LLM explanation layer (`llama.cpp` or Hugging Face backend)
 
-Dataset source:
+Dataset:
 - https://www.kaggle.com/datasets/ankit1743/skyview-an-aerial-landscape-dataset
 
 Original training experiment:
 - https://www.kaggle.com/code/bencetar/clip-hard-example-mining-finetuning
 
-Training notebook for scheduled runs:
+Training notebook used for scheduled runs:
 - `src/training/notebook/satellite-imagery-training.ipynb`
+
+## Features
+
+- CLIP-based satellite image inference with top-k class scores
+- W&B-backed model/run discovery and artifact synchronization
+- Streamlit UI for image upload/URL inference and prediction visualization
+- Optional LLM explanations from prediction score distributions
+- Two LLM backends: `llama.cpp` (GGUF) and Hugging Face Transformers
+- Postgres persistence for predictions, LLM outputs, and app feedback
+- Prometheus/Grafana monitoring for service and inference metrics
 
 ## Training & Inference
 
-They are managed separately:
-- Training was mainly based on the training notebook via GitHub Actions CICD
-- Inference was tested/can be initialized through docker-compose
+I keep training and inference separate on purpose.
+
+### Training
+
+- Training experiments are notebook-based and tracked with W&B.
+- The main reference experiment is published on Kaggle:
+  - https://www.kaggle.com/code/bencetar/clip-hard-example-mining-finetuning
+- The repository also includes a notebook for scheduled/automated runs:
+  - `src/training/notebook/satellite-imagery-training.ipynb`
+
+### Inference
+
+- Inference is served through FastAPI, with Streamlit as the frontend.
+- You can provide an image either by uploading it or by URL.
+- The API loads the selected W&B artifact, runs CLIP classification, and returns:
+  - predicted class
+  - top-k results
+  - full score distribution
+- If needed, the app can also generate an LLM-based explanation from the score distribution and store it in Postgres.
 
 ## Architecture
 
@@ -101,7 +127,7 @@ Backends:
 ## Database tables
 
 `clip_predict`:
-- stores prediction metadata, score distribution, and optional LLM answer fields
+- stores prediction metadata, score distributions, and optional LLM answer fields
 
 `app_feedback`:
 - stores user app rating and comment
