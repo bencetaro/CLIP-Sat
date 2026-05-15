@@ -2,10 +2,10 @@ media/
 tmp/
 artifacts/
 postgres_data/
-output/
 models/
 __pycache__/
 *.pyc
+*.git
 *.env
 *.db
 *.log

@@ -1,0 +1,8 @@
+torch>=2.0.0
+pillow>=10.0.0
+pandas>=2.0.0
+transformers>=4.40.0
+wandb>=0.25.0
+psycopg2-binary>=2.9.9
+pyyaml>=6.0.1
+python-dotenv>=1.0.1
