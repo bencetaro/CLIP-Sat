@@ -18,7 +18,7 @@ Training notebook used for scheduled runs:
 
 ## Process Model
 
-![Workflow](https://github.com/bencetaro/CLIP-Sat/blob/feature/inference/screenshots/clipsat-process.png)
+![Workflow](https://github.com/bencetaro/CLIP-Sat/blob/master/screenshots/clipsat-process.png)
 
 ## Features
 
@@ -219,24 +219,24 @@ python scripts/db_inspect.py
 ## Screenshots of the project
 
 ### Home page
-![Home](https://github.com/bencetaro/CLIP-Sat/blob/feature/inference/screenshots/home1.png)
-![Home](https://github.com/bencetaro/CLIP-Sat/blob/feature/inference/screenshots/home2.png)
+![Home](https://github.com/bencetaro/CLIP-Sat/blob/master/screenshots/home1.png)
+![Home](https://github.com/bencetaro/CLIP-Sat/blob/master/screenshots/home2.png)
 
 ### Inference page
-![Inference](https://github.com/bencetaro/CLIP-Sat/blob/feature/inference/screenshots/inf1.png)
-![Inference](https://github.com/bencetaro/CLIP-Sat/blob/feature/inference/screenshots/inf2.png)
-![Inference](https://github.com/bencetaro/CLIP-Sat/blob/feature/inference/screenshots/inf3.png)
-![Inference](https://github.com/bencetaro/CLIP-Sat/blob/feature/inference/screenshots/inf4.png)
+![Inference](https://github.com/bencetaro/CLIP-Sat/blob/master/screenshots/inf1.png)
+![Inference](https://github.com/bencetaro/CLIP-Sat/blob/master/screenshots/inf2.png)
+![Inference](https://github.com/bencetaro/CLIP-Sat/blob/master/screenshots/inf3.png)
+![Inference](https://github.com/bencetaro/CLIP-Sat/blob/master/screenshots/inf4.png)
 
 ### Training summary page
-![Training](https://github.com/bencetaro/CLIP-Sat/blob/feature/inference/screenshots/train1.png)
-![Training](https://github.com/bencetaro/CLIP-Sat/blob/feature/inference/screenshots/train2.png)
-![Training](https://github.com/bencetaro/CLIP-Sat/blob/feature/inference/screenshots/train3.png)
+![Training](https://github.com/bencetaro/CLIP-Sat/blob/master/screenshots/train1.png)
+![Training](https://github.com/bencetaro/CLIP-Sat/blob/master/screenshots/train2.png)
+![Training](https://github.com/bencetaro/CLIP-Sat/blob/master/screenshots/train3.png)
 
 ### Grafana dashboard
-![Grafana](https://github.com/bencetaro/CLIP-Sat/blob/feature/inference/screenshots/graf1.png)
-![Grafana](https://github.com/bencetaro/CLIP-Sat/blob/feature/inference/screenshots/graf2.png)
-![Grafana](https://github.com/bencetaro/CLIP-Sat/blob/feature/inference/screenshots/graf3.png)
+![Grafana](https://github.com/bencetaro/CLIP-Sat/blob/master/screenshots/graf1.png)
+![Grafana](https://github.com/bencetaro/CLIP-Sat/blob/master/screenshots/graf2.png)
+![Grafana](https://github.com/bencetaro/CLIP-Sat/blob/master/screenshots/graf3.png)
 
 ### Postgres db
-![Postgres](https://github.com/bencetaro/CLIP-Sat/blob/feature/inference/screenshots/pg1.png)
+![Postgres](https://github.com/bencetaro/CLIP-Sat/blob/master/screenshots/pg1.png)
