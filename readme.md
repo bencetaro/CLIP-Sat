@@ -16,6 +16,10 @@ Original training experiment:
 Training notebook used for scheduled runs:
 - `src/training/notebook/satellite-imagery-training.ipynb`
 
+## Process Model
+
+![Workflow](https://github.com/bencetaro/CLIP-Sat/blob/feature/inference/screenshots/clipsat-process.png)
+
 ## Features
 
 - CLIP-based satellite image inference with top-k class scores
@@ -37,6 +41,9 @@ I keep training and inference separate on purpose.
   - https://www.kaggle.com/code/bencetar/clip-hard-example-mining-finetuning
 - The repository also includes a notebook for scheduled/automated runs:
   - `src/training/notebook/satellite-imagery-training.ipynb`
+- Every `feature/**` branch push will trigger a GitHub Actions workflow to:
+  - 1. Update a new dataset version.
+  - 2. Run a new Kaggle notebook and W&B experiment.
 
 ### Inference
 
@@ -47,6 +54,21 @@ I keep training and inference separate on purpose.
   - top-k results
   - full score distribution
 - If needed, the app can also generate an LLM-based explanation from the score distribution and store it in Postgres.
+
+#### LLM flow
+
+Streamlit "Generate explanation" does:
+1. Warmup selected backend (`/llm/warmup`)
+2. Generate answer (`/llm/review`)
+3. Persist LLM output to matching prediction row (if DB enabled and `prediction_id` exists)
+
+Backends:
+- `llama_cpp`: lighter memory profile, requires local GGUF
+- `hf_heavy`: heavier memory profile, model loaded via Transformers
+
+> **Note:** Inference currently only supports CPU.
+
+> *Side note: Ideally, if the CLIP model were very accurate in the multiclass sense, then the LLM model would better define the content of the image, for example in relation to climate zone or the presence of human activity. This is of course also true for the LLM model, as only simpler lightweight models are currently implemented.*
 
 ## Architecture
 
@@ -98,6 +120,35 @@ LLM keys:
 - `LLM_TEMPERATURE`, `LLM_MAX_TOKENS`
 - `HF_TOKEN`: optional token for private/gated downloads
 
+## Database tables
+
+`clip_predict`:
+- stores prediction metadata, score distributions, and optional LLM answer fields
+
+| Column          | Description                            |
+| --------------- | -------------------------------------- |
+| `id`            | Primary key                            |
+| `timestamp`     | Prediction timestamp                   |
+| `image_url`     | Input image location                   |
+| `run_id`        | W&B training run                       |
+| `device_type`   | Inference device (cpu or cuda)         |
+| `predictions`   | Serialized prediction probabilities    |
+| `top_k`         | Top-k predicted classes                |
+| `llm_status`    | LLM generation status                  |
+| `llm_backend`   | LLM backend used                       |
+| `llm_answer`    | Generated explanation                  |
+| `llm_timestamp` | LLM response timestamp                 |
+
+`app_feedback`:
+- stores user app rating and comment
+
+| Column        | Description               |
+| ------------- | ------------------------- |
+| `id`          | Primary key               |
+| `timestamp`   | Submission timestamp      |
+| `app_rating`  | Numeric app rating        |
+| `app_comment` | Optional written feedback |
+
 ## Run
 
 1. Create `.env` from `.env.example` and fill real values.
@@ -113,31 +164,7 @@ docker compose up -d --build
 - Prometheus: `http://localhost:9090`
 - Grafana: `http://localhost:3000`
 
-## LLM flow
-
-Streamlit "Generate explanation" does:
-1. Warmup selected backend (`/llm/warmup`)
-2. Generate answer (`/llm/review`)
-3. Persist LLM output to matching prediction row (if DB enabled and `prediction_id` exists)
-
-Backends:
-- `llama_cpp`: lighter memory profile, requires local GGUF
-- `hf_heavy`: heavier memory profile, model loaded via Transformers
-
-## Database tables
-
-`clip_predict`:
-- stores prediction metadata, score distributions, and optional LLM answer fields
-
-`app_feedback`:
-- stores user app rating and comment
-
 ## Common commands
-
-Start/rebuild:
-```bash
-docker compose up -d --build
-```
 
 Follow logs:
 ```bash
@@ -159,6 +186,33 @@ python scripts/db_inspect.py
 ## Notes and troubleshooting
 
 - `psql` is not installed in the `fastapi` image by default; use `postgres` container for interactive SQL.
-- `llama_context: n_ctx_seq (2048) < n_ctx_train (32768)` is a warning, not an error.
+- `llama_context: n_ctx_seq (2048) < n_ctx_train (32768)` is a warning, not an error (refers to per-sequence context size).
 - First model warmup can be slow; subsequent calls use in-process cache.
 - If W&B calls timeout, increase `WANDB_API_TIMEOUT`.
+
+---
+
+## Screenshots of the project
+
+### Home page
+![Home](https://github.com/bencetaro/CLIP-Sat/blob/feature/inference/screenshots/home1.png)
+![Home](https://github.com/bencetaro/CLIP-Sat/blob/feature/inference/screenshots/home2.png)
+
+### Inference page
+![Inference](https://github.com/bencetaro/CLIP-Sat/blob/feature/inference/screenshots/inf1.png)
+![Inference](https://github.com/bencetaro/CLIP-Sat/blob/feature/inference/screenshots/inf2.png)
+![Inference](https://github.com/bencetaro/CLIP-Sat/blob/feature/inference/screenshots/inf3.png)
+![Inference](https://github.com/bencetaro/CLIP-Sat/blob/feature/inference/screenshots/inf4.png)
+
+### Training summary page
+![Training](https://github.com/bencetaro/CLIP-Sat/blob/feature/inference/screenshots/train1.png)
+![Training](https://github.com/bencetaro/CLIP-Sat/blob/feature/inference/screenshots/train2.png)
+![Training](https://github.com/bencetaro/CLIP-Sat/blob/feature/inference/screenshots/train3.png)
+
+### Grafana dashboard
+![Grafana](https://github.com/bencetaro/CLIP-Sat/blob/feature/inference/screenshots/graf1.png)
+![Grafana](https://github.com/bencetaro/CLIP-Sat/blob/feature/inference/screenshots/graf2.png)
+![Grafana](https://github.com/bencetaro/CLIP-Sat/blob/feature/inference/screenshots/graf3.png)
+
+### Postgres db
+![Postgres](https://github.com/bencetaro/CLIP-Sat/blob/feature/inference/screenshots/pg1.png)

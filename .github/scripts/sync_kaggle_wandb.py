@@ -23,7 +23,7 @@ def sync_offline_runs(run_files: list[Path], entity: str | None) -> list[str]:
         raise RuntimeError("No offline W&B run files found.")
 
     source_run_ids: list[str] = []
-    sync_args = ["--include-offline", "--quiet"]
+    sync_args = ["--include-offline"]
     if entity:
         sync_args.extend(["--entity", entity])
 
@@ -32,7 +32,7 @@ def sync_offline_runs(run_files: list[Path], entity: str | None) -> list[str]:
         run_id = run_file.stem.removeprefix("run-")
         source_run_ids.append(run_id)
         print(run_file)
-        subprocess.run(["wandb", "sync", str(run_file), *sync_args], check=True)
+        subprocess.run(["wandb", "sync", "--quiet", str(run_file), *sync_args], check=True)
 
     return source_run_ids
 

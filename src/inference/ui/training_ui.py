@@ -48,41 +48,63 @@ def show_training_ui():
     api_base_url = _api_base_url()
 
     # Model selector
-    try:
-        models = requests.get(f"{api_base_url}/models", timeout=10).json()
-        runs = models.get("runs", [])
-        default_run = models.get("default")
-    except Exception as e:
-        st.error(f"Failed to load runs from API: {e}")
-        return
+    c1, c2 = st.columns([3,2])
+    with c1:
+        try:
+            models = requests.get(f"{api_base_url}/models", timeout=10).json()
+            runs = models.get("runs", [])
+            default_run = models.get("default")
+        except Exception as e:
+            st.error(f"Failed to load runs from API: {e}")
+            return
 
-    if not runs:
-        st.warning("No runs returned by the API. Check `WANDB_ENTITY`/`WANDB_PROJECT` in the backend.")
-        return
+        if not runs:
+            st.warning("No runs returned by the API. Check `WANDB_ENTITY`/`WANDB_PROJECT` in the backend.")
+            return
 
-    run_names = [r["name"] for r in runs]
+        run_names = [r["name"] for r in runs]
 
-    st.markdown("#### Select run ")
-    selected_run = st.selectbox(
-        "",
-        run_names,
-        index=(run_names.index(default_run) if default_run in run_names else 0),
-        width=500,
-    )
-    chosen_id = next((r["id"] for r in runs if r["name"] == selected_run), None)
+        st.markdown("#### Select run ")
+        selected_run = st.selectbox(
+            "",
+            run_names,
+            index=(run_names.index(default_run) if default_run in run_names else 0),
+            width=500,
+        )
+        chosen_id = next((r["id"] for r in runs if r["name"] == selected_run), None)
 
-    col1, col2, col3 = st.columns([2, 3, 10])
-    with col1:
-        if st.button("Sync model artifact"): # (warm cache)
-            r = requests.post(f"{api_base_url}/wandb/sync_model", params={"run_id": chosen_id}, timeout=120)
-            if r.status_code == 200:
-                st.success("Synced model artifact")
-                st.json(r.json())
-            else:
-                st.error(r.text, r.status_code)
+        # col1, col2, col3 = st.columns([2, 3, 10])
+        # with col1:
+        #     if st.button("Sync model artifact"): # (warm cache)
+        #         r = requests.post(f"{api_base_url}/wandb/sync_model", params={"run_id": chosen_id}, timeout=120)
+        #         if r.status_code == 200:
+        #             st.success("Synced model artifact")
+        #             st.json(r.json())
+        #         else:
+        #             st.error(r.text, r.status_code)
 
-    with col2:
-        st.caption("Download latest `.pt` model for the run.", text_alignment="left")
+        # with col2:
+        #     st.caption("Download latest `.pt` model for the run.", text_alignment="left")
+
+    with c2:
+        with st.container(border=False):
+            st.markdown("### Side note")
+            st.markdown(
+                """
+                The most significant differences can be measured in the following ways:
+
+                - Models that only performed feature extraction were less able to recognize certain classes, or failed to recognize them altogether
+                  (e.g., forest, agriculture, airport). This can be best observed in the **"Class distribution by metric"** section for a chosen metric.
+
+                - This behavior is also reflected in the test accuracy of the models across runs:
+
+                    - **focal-top-adam**: 0.94
+                    - **focal-clfhead-adam**: 0.80
+                    - **ce-top-adam**: 0.94
+                    - **ce-clfhead-adam**: 0.75
+
+                """
+            )
 
     st.divider()
 

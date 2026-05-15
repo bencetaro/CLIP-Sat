@@ -2,6 +2,9 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
 
+rule_files:
+  - ./rules.yml
+
 scrape_configs:
   - job_name: "inference_stats"
     scrape_interval: 10s
@@ -20,24 +23,3 @@ scrape_configs:
     metrics_path: /metrics
     static_configs:
       - targets: ["node-exporter:9100"]
-
-groups:
-  - name: clipsat.rules
-    interval: 30s
-    rules:
-      - record: clipsat:req_rate_5m
-        expr: sum(rate(inference_requests_total[5m]))
-
-      - record: clipsat:error_rate_5m
-        expr: sum(rate(inference_errors_total[5m]))
-          /
-          sum(rate(inference_requests_total[5m]))
-
-      - record: clipsat:cache_hit_ratio_5m
-        expr: sum(rate(model_cache_hit_total[5m]))
-          /
-          (
-            sum(rate(model_cache_hit_total[5m]))
-            +
-            sum(rate(model_cache_miss_total[5m]))
-          )

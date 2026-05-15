@@ -1,116 +1,74 @@
 {
-  "title": "CLIPSAT W&B + Cache + DB Monitoring",
+  "title": "CLIPSAT Cache, W&B, and Reliability",
   "uid": "clipsat-cache",
   "schemaVersion": 42,
-  "version": 1,
+  "version": 2,
   "refresh": "10s",
   "timezone": "browser",
-  "tags": ["clipsat", "cache", "wandb"],
+  "tags": ["clipsat", "cache", "wandb", "db"],
   "time": {
     "from": "now-24h",
     "to": "now"
-  },
-  "templating": {
-    "list": [
-      {
-        "name": "model",
-        "type": "query",
-        "datasource": {
-          "type": "prometheus",
-          "uid": "prometheus"
-        },
-        "query": "label_values(model_cache_hit_total, model)",
-        "multi": true,
-        "includeAll": true
-      }
-    ]
   },
   "panels": [
     {
       "id": 1,
       "type": "stat",
-      "title": "Model Cache Hit Ratio %",
-      "gridPos": { "h": 5, "w": 6, "x": 0, "y": 0 },
+      "title": "Model Cache Hit Ratio (%)",
+      "gridPos": {"h": 5, "w": 6, "x": 0, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
       "targets": [
-        {
-          "expr": "(sum(rate(model_cache_hit_total[5m])) / (sum(rate(model_cache_hit_total[5m])) + sum(rate(model_cache_miss_total[5m])))) * 100"
-        }
+        {"expr": "100 * sum(rate(model_cache_hit_total[5m])) / clamp_min(sum(rate(model_cache_hit_total[5m]) + rate(model_cache_miss_total[5m])), 1e-9)"}
       ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percent"
-        }
-      }
+      "fieldConfig": {"defaults": {"unit": "percent"}, "overrides": []}
     },
-
     {
       "id": 2,
       "type": "stat",
-      "title": "W&B Cache Hit Ratio %",
-      "gridPos": { "h": 5, "w": 6, "x": 6, "y": 0 },
+      "title": "W&B Cache Hit Ratio (%)",
+      "gridPos": {"h": 5, "w": 6, "x": 6, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
       "targets": [
-        {
-          "expr": "(sum(rate(wandb_cache_lookups_total{result=\"hit\"}[5m])) / sum(rate(wandb_cache_lookups_total[5m]))) * 100"
-        }
+        {"expr": "100 * sum(rate(wandb_cache_lookups_total{result=\"hit\"}[5m])) / clamp_min(sum(rate(wandb_cache_lookups_total[5m])), 1e-9)"}
       ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percent"
-        }
-      }
+      "fieldConfig": {"defaults": {"unit": "percent"}, "overrides": []}
     },
-
     {
       "id": 3,
       "type": "stat",
-      "title": "Current W&B Cache Entries",
-      "gridPos": { "h": 5, "w": 6, "x": 12, "y": 0 },
-      "targets": [
-        {
-          "expr": "wandb_cache_entries"
-        }
-      ]
+      "title": "W&B Cache Entries",
+      "gridPos": {"h": 5, "w": 6, "x": 12, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "wandb_cache_entries"}]
     },
-
     {
       "id": 4,
       "type": "stat",
       "title": "DB Errors (24h)",
-      "gridPos": { "h": 5, "w": 6, "x": 18, "y": 0 },
-      "targets": [
-        {
-          "expr": "increase(db_errors_total[24h])"
-        }
-      ]
+      "gridPos": {"h": 5, "w": 6, "x": 18, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "sum(increase(db_errors_total[24h]))"}]
     },
 
     {
       "id": 5,
       "type": "timeseries",
       "title": "Model Cache Hits vs Misses",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 5 },
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 5},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
       "targets": [
-        {
-          "expr": "sum(rate(model_cache_hit_total[5m])) by (model)",
-          "legendFormat": "{{model}} hits"
-        },
-        {
-          "expr": "sum(rate(model_cache_miss_total[5m])) by (model)",
-          "legendFormat": "{{model}} misses"
-        }
+        {"expr": "sum(rate(model_cache_hit_total[5m])) by (model)", "legendFormat": "{{model}} hits"},
+        {"expr": "sum(rate(model_cache_miss_total[5m])) by (model)", "legendFormat": "{{model}} misses"}
       ]
     },
-
     {
       "id": 6,
       "type": "timeseries",
-      "title": "W&B Cache Lookups",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 5 },
+      "title": "W&B Cache Lookups by Result",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 5},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
       "targets": [
-        {
-          "expr": "sum(rate(wandb_cache_lookups_total[5m])) by (result)",
-          "legendFormat": "{{result}}"
-        }
+        {"expr": "sum(rate(wandb_cache_lookups_total[5m])) by (cache, result)", "legendFormat": "{{cache}} {{result}}"}
       ]
     },
 
@@ -118,80 +76,86 @@
       "id": 7,
       "type": "timeseries",
       "title": "W&B Fetch Latency P95",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 13 },
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 13},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
       "targets": [
-        {
-          "expr": "histogram_quantile(0.95, sum(rate(wandb_fetch_latency_seconds_bucket[5m])) by (le, cache))",
-          "legendFormat": "{{cache}}"
-        }
+        {"expr": "histogram_quantile(0.95, sum(rate(wandb_fetch_latency_seconds_bucket[5m])) by (le, cache))", "legendFormat": "{{cache}}"}
       ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "s"
-        }
-      }
+      "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []}
     },
-
     {
       "id": 8,
       "type": "timeseries",
       "title": "W&B Cache Entry Age P95",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 13 },
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 13},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
       "targets": [
-        {
-          "expr": "histogram_quantile(0.95, sum(rate(wandb_cache_entry_age_seconds_bucket[5m])) by (le, cache))",
-          "legendFormat": "{{cache}}"
-        }
+        {"expr": "histogram_quantile(0.95, sum(rate(wandb_cache_entry_age_seconds_bucket[5m])) by (le, cache))", "legendFormat": "{{cache}}"}
       ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "s"
-        }
-      }
+      "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []}
     },
 
     {
       "id": 9,
       "type": "timeseries",
       "title": "Model Load Latency P95",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 21 },
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 21},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
       "targets": [
-        {
-          "expr": "histogram_quantile(0.95, sum(rate(model_load_latency_seconds_bucket[5m])) by (le, model))",
-          "legendFormat": "{{model}}"
-        }
+        {"expr": "histogram_quantile(0.95, sum(rate(model_load_latency_seconds_bucket[5m])) by (le, model))", "legendFormat": "{{model}}"}
       ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "s"
-        }
-      }
+      "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []}
     },
-
     {
       "id": 10,
       "type": "timeseries",
       "title": "Model Load Errors",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 21 },
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 21},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
       "targets": [
-        {
-          "expr": "increase(model_load_errors_total[1h])",
-          "legendFormat": "{{model}}"
-        }
+        {"expr": "sum(increase(model_load_errors_total[1h])) by (model)", "legendFormat": "{{model}}"}
       ]
     },
 
     {
       "id": 11,
       "type": "timeseries",
-      "title": "DB Errors by Stage",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 29 },
+      "title": "DB Errors by Stage (/sec)",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 29},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
       "targets": [
-        {
-          "expr": "sum(rate(db_errors_total[5m])) by (stage)",
-          "legendFormat": "{{stage}}"
-        }
+        {"expr": "sum(rate(db_errors_total[5m])) by (stage)", "legendFormat": "{{stage}}"}
       ]
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "LLM Requests by Endpoint/Status",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 29},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"expr": "sum(rate(llm_requests_total[5m])) by (endpoint, status)", "legendFormat": "{{endpoint}} {{status}}"}
+      ]
+    },
+
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "LLM Latency P95",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 37},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"expr": "histogram_quantile(0.95, sum(rate(llm_latency_seconds_bucket[5m])) by (le, endpoint))", "legendFormat": "{{endpoint}}"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []}
+    },
+    {
+      "id": 14,
+      "type": "stat",
+      "title": "Loaded LLM Client Count",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 37},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"expr": "llm_loaded"}]
     }
   ]
 }
