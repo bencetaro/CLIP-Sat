@@ -100,6 +100,32 @@ Named Docker volume:
 W&B model artifacts are downloaded to:
 - `WANDB_ARTIFACT_CACHE_DIR` (default `/app/media/wandb_artifacts`)
 
+## Caching strategy
+
+Caching is used in multiple parts of the inference stack to reduce repeated network calls, model reloads, and latency spikes.
+
+### W&B cache (as an example)
+
+The W&B integration in `src/inference/utils/wandb_helpers.py` and `src/inference/api_service.py` uses two cache layers:
+- **Response cache (in-memory, TTL-based):**
+  - applied to expensive W&B metadata queries (`/models`, `/wandb/history`, `/wandb/metadata`, `/wandb/artifacts`, etc.)
+  - controlled by `WANDB_CACHE_TTL_SECONDS`
+  - avoids repeated GraphQL/API requests during active UI usage
+- **Artifact file cache (on disk):**
+  - downloaded `.pt` model artifacts are stored in `WANDB_ARTIFACT_CACHE_DIR`
+  - this path is mounted to `./media` so artifacts persist across container restarts
+
+### Other caching in the project
+
+- **Model artifact cache (in-memory mapping):**
+  - `_artifact_cache` in `api_service.py` maps `run_id -> artifact_path/metadata`
+  - avoids re-downloading/re-resolving model checkpoints on repeated predictions
+- **LLM client cache (in-memory):**
+  - `src/inference/utils/llm_helpers.py` caches initialized LLM clients by backend/GPU mode
+  - warmup or first generation pays the initialization cost; subsequent calls reuse the loaded client
+- **HF/Transformers local cache (backend-dependent):**
+  - when using `hf_heavy`, model/tokenizer files are cached by Hugging Face under container cache directories unless configured otherwise
+
 ## Environment variables
 
 Use `.env.example` as reference.
@@ -123,7 +149,6 @@ LLM keys:
 ## Database tables
 
 `clip_predict`:
-- stores prediction metadata, score distributions, and optional LLM answer fields
 
 | Column          | Description                            |
 | --------------- | -------------------------------------- |
@@ -140,7 +165,6 @@ LLM keys:
 | `llm_timestamp` | LLM response timestamp                 |
 
 `app_feedback`:
-- stores user app rating and comment
 
 | Column        | Description               |
 | ------------- | ------------------------- |
